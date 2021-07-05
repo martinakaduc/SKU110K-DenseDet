@@ -17,9 +17,9 @@ def main():
     # build the model from a config file and a checkpoint file
     model = init_detector(args.config, args.checkpoint, device=args.device)
     # test a single image
-    result = inference_detector(model, args.img)
+    result, label = inference_detector(model, args.img)
     # show the results
-    show_result_pyplot(args.img, result, model.CLASSES, score_thr=args.score_thr)
+    show_result_pyplot(args.img, result, label, score_thr=args.score_thr)
     
 
 if __name__ == '__main__':

@@ -167,5 +167,8 @@ def show_result_pyplot(img,
     """
     img = show_result(
         img, result, class_names, score_thr=score_thr, show=False)
+
+    import cv2
+    cv2.imwrite("result.png", img)
     plt.figure(figsize=fig_size)
     plt.imshow(mmcv.bgr2rgb(img))
