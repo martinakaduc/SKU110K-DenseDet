@@ -2,6 +2,7 @@ from __future__ import division
 
 import torch
 import torch.nn as nn
+import numpy as np
 
 from mmdet.core import (bbox2result, bbox2roi, bbox_mapping, build_assigner,
                         build_sampler, merge_aug_bboxes, merge_aug_masks,
@@ -327,15 +328,18 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
         rcnn_test_cfg = self.test_cfg.rcnn
 
         rois = bbox2roi(proposal_list)
+        bbox_feat_list = []
         for i in range(self.num_stages):
             bbox_roi_extractor = self.bbox_roi_extractor[i]
             bbox_head = self.bbox_head[i]
+            bbox_feat_list.append([])
 
             bbox_feats = bbox_roi_extractor(
                 x[:len(bbox_roi_extractor.featmap_strides)], rois)
             if self.with_shared_head:
                 bbox_feats = self.shared_head(bbox_feats)
 
+            bbox_feat_list[i].append(bbox_feats.numpy())
             cls_score, bbox_pred = bbox_head(bbox_feats)
             ms_scores.append(cls_score)
 
@@ -345,7 +349,7 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
                                                   img_meta[0])
 
         cls_score = sum(ms_scores) / self.num_stages
-        det_bboxes, det_labels = self.bbox_head[-1].get_det_bboxes(
+        det_bboxes, det_labels, det_inds = self.bbox_head[-1].get_det_bboxes(
             rois,
             cls_score,
             bbox_pred,
@@ -357,6 +361,9 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
                                   self.bbox_head[-1].num_classes)
         ms_bbox_result['ensemble'] = bbox_result
 
+        bbox_feat_list = np.dstack(bbox_feat_list)
+        print(bbox_feat_list.shape)
+        
         if self.with_mask:
             if det_bboxes.shape[0] == 0:
                 mask_classes = self.mask_head[-1].num_classes - 1

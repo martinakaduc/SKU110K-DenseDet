@@ -28,7 +28,7 @@ def multiclass_nms(multi_bboxes,
             are 0-based.
     """
     num_classes = multi_scores.shape[1]
-    bboxes, labels = [], []
+    bboxes, labels, inds = [], [], []
     nms_cfg_ = nms_cfg.copy()
     nms_type = nms_cfg_.pop('type', 'nms')
     nms_op = getattr(nms_wrapper, nms_type)
@@ -51,9 +51,11 @@ def multiclass_nms(multi_bboxes,
                                            dtype=torch.long)
         bboxes.append(cls_dets)
         labels.append(cls_labels)
+        inds.append(cls_inds)
     if bboxes:
         bboxes = torch.cat(bboxes)
         labels = torch.cat(labels)
+        inds = torch.cat(inds)
         if bboxes.shape[0] > max_num:
             _, inds = bboxes[:, -1].sort(descending=True)
             inds = inds[:max_num]
@@ -63,4 +65,4 @@ def multiclass_nms(multi_bboxes,
         bboxes = multi_bboxes.new_zeros((0, 5))
         labels = multi_bboxes.new_zeros((0, ), dtype=torch.long)
 
-    return bboxes, labels
+    return bboxes, labels, inds
