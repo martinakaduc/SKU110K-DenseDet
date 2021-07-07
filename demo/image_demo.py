@@ -15,9 +15,9 @@ def main():
     args = parser.parse_args()
 
     # build the model from a config file and a checkpoint file
-    model = init_detector(args.config, args.checkpoint, device=args.device)
+    pt_model = init_detector(args.config, args.checkpoint, device=args.device)
     # test a single image
-    result = inference_detector(model, args.img)
+    result = inference_detector(pt_model, args.img)
     # show the results
     # show_result_pyplot(args.img, result, label, score_thr=args.score_thr)
 
@@ -30,6 +30,7 @@ def main():
     label_mapping = pickle.load(open("label_mapping.pkl", "rb"))
 
     ### LOAD MODEL ###
+    tf.config.set_visible_devices([], 'GPU')
     model = tf.keras.models.load_model("./milkcan.hdf5")
 
     img = cv2.imread(args.img)
@@ -40,11 +41,11 @@ def main():
         for x1, y1, x2, y2, score in bboxes:
             box_img = img[int(y1):int(y2), int(x1):int(x2)]
             resized_box_img = cv2.resize(box_img, (32, 32))
-            label_idx = np.argmax(model.predict(array_of_images), axis=-1).tolist()[0]
+            label_idx = np.argmax(model.predict(np.array([resized_box_img])), axis=-1).tolist()[0]
             label = label_mapping[label_idx]
 
             dest_img = cv2.rectangle(dest_img, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 3)
-            dest_img = cv2.putText(dest_img, label, (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            dest_img = cv2.putText(dest_img, label, (int(x1), int(y1)+30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1, cv2.LINE_AA)
 
     cv2.imwrite("result.png", dest_img)
 
