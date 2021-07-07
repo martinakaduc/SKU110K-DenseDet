@@ -328,18 +328,16 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
         rcnn_test_cfg = self.test_cfg.rcnn
 
         rois = bbox2roi(proposal_list)
-        bbox_feat_list = []
+
         for i in range(self.num_stages):
             bbox_roi_extractor = self.bbox_roi_extractor[i]
             bbox_head = self.bbox_head[i]
-            bbox_feat_list.append([])
 
             bbox_feats = bbox_roi_extractor(
                 x[:len(bbox_roi_extractor.featmap_strides)], rois)
             if self.with_shared_head:
                 bbox_feats = self.shared_head(bbox_feats)
 
-            bbox_feat_list[i].append(bbox_feats.cpu().numpy())
             cls_score, bbox_pred = bbox_head(bbox_feats)
             ms_scores.append(cls_score)
 
@@ -358,22 +356,10 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
             rescale=rescale,
             cfg=rcnn_test_cfg)
 
-        bbox_feat_list = np.dstack(bbox_feat_list)[0]
-        det_inds = det_inds.cpu().numpy()
-        bbox_feat_list = bbox_feat_list[det_inds]
-        print(bbox_feat_list.shape)
-        # print(det_inds)
-
-        from sklearn.cluster import KMeans
-        kmeans = KMeans(n_clusters=7).fit(bbox_feat_list.reshape(-1, 512*7*7))
-        print(kmeans.labels_)
-
-        # bbox_result = bbox2result(det_bboxes, det_labels,
-        #                           self.bbox_head[-1].num_classes)
-        _bboxes = det_bboxes.cpu().numpy()
-        bbox_result = [_bboxes[kmeans.labels_ == i, :] for i in range(7)]
+        bbox_result = bbox2result(det_bboxes, det_labels,
+                                  self.bbox_head[-1].num_classes)
         ms_bbox_result['ensemble'] = bbox_result
-        
+
         if self.with_mask:
             if det_bboxes.shape[0] == 0:
                 mask_classes = self.mask_head[-1].num_classes - 1
@@ -412,7 +398,7 @@ class CascadeRCNN(BaseDetector, RPNTestMixin):
         else:
             results = ms_bbox_result['ensemble']
 
-        return results, tuple([str(x) for x in range(7)])
+        return results
 
     def aug_test(self, imgs, img_metas, proposals=None, rescale=False):
         """Test with augmentations.
